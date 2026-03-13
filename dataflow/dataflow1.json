@@ -1,0 +1,73 @@
+{
+	"name": "dataflow1",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "DS_MovesCsv",
+						"type": "DatasetReference"
+					},
+					"name": "Movies"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "DS_StoreMoviesCleanData",
+						"type": "DatasetReference"
+					},
+					"name": "MoviesCleanSink"
+				},
+				{
+					"dataset": {
+						"referenceName": "DS_StoreMoviesCleanData",
+						"type": "DatasetReference"
+					},
+					"name": "MoviesByYear"
+				}
+			],
+			"transformations": [
+				{
+					"name": "YearExtraction"
+				},
+				{
+					"name": "groupByMoviesINYear"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          movieId as string,",
+				"          title as string,",
+				"          genres as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> Movies",
+				"Movies derive(Year = toInteger(trim(right(title, 6),'()')),",
+				"          title = toString(left(title, length(title)-6))) ~> YearExtraction",
+				"YearExtraction aggregate(groupBy(Year),",
+				"     MoviesCount = count()) ~> groupByMoviesINYear",
+				"YearExtraction sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     partitionFileNames:['Movies-Clean.csv'],",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     partitionBy('hash', 1)) ~> MoviesCleanSink",
+				"groupByMoviesINYear sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     partitionFileNames:['MoviesByYear.csv'],",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     partitionBy('hash', 1)) ~> MoviesByYear"
+			]
+		}
+	}
+}
